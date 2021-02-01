@@ -1,0 +1,11 @@
+[main]
+madmin=https://madmin.com
+user=user
+password=pass
+rebootafter=5
+rebootcooldown=5
+discordwebhook=https://discord.com/api/webhooks/xxxx
+
+[snmp]
+ip=192.168.0.0
+password=xxx
