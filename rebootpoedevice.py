@@ -1,7 +1,6 @@
 import json
 import requests
 import configparser
-import threading
 from datetime import datetime, timedelta
 from pysnmp.hlapi import *
 import time
@@ -35,7 +34,6 @@ context = ContextData()
 rebooted_devices = {}
 
 def check_device():
-    threading.Timer(60.0, check_device).start()
     logging.info("checking devices...")
     status = requests.get(madmin + '/get_status', auth=(user, password))
     status = status.json()
@@ -68,6 +66,8 @@ def reboot_device(name):
             if rebooted_devices[name] > int(datetime.now().timestamp()) - (int(rebootcooldown) * 60):
                 logging.info(f"{name} was rebooted in the recent past, skipping for now...")
                 return
+            else:
+                rebooted_devices[name] = int(datetime.now().timestamp())
         else:
             rebooted_devices[name] = int(datetime.now().timestamp())
         logging.info(f"shutting down {name}...")
@@ -106,4 +106,6 @@ def discord_message(name):
     except requests.exceptions.HTTPError as e:
         logging.info(e.response.text)
 
-check_device()
+while True:
+    check_device()
+    time.sleep(60)
