@@ -38,7 +38,7 @@ def check_device():
     status = requests.get(madmin + '/get_status', auth=(user, password))
     status = status.json()
     for device in status:
-        if device["lastProtoDateTime"]:
+        if device["lastProtoDateTime"] and device["mode"] != "Idle":
             now = int(datetime.now().timestamp())
             lastData = device["lastProtoDateTime"]
             sleepTime = device["currentSleepTime"]
@@ -49,7 +49,7 @@ def check_device():
             else:
                 logging.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
-        else:
+        elif device["mode"] != "Idle":
             logging.info(f'{device["name"]} is not online!')
             reboot_device(device["name"])
     logging.info("done checking devices...")
