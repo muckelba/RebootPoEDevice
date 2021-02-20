@@ -1,0 +1,12 @@
+{
+    "Instance1": {
+        "url": "https://madmin.com",
+        "user": "username",
+        "pass": "password"
+    },
+    "Instance2": {
+        "url": "https://madmin2.com",
+        "user": "username",
+        "pass": "password"
+    }
+}

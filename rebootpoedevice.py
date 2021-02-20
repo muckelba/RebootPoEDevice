@@ -14,9 +14,6 @@ logging.basicConfig(
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-madmin = config['main']['madmin']
-user = config['main']['user']
-password = config['main']['password']
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
@@ -26,6 +23,9 @@ snmp_password = config['snmp']['password']
 with open('devices.json') as json_file:
     devices = json.load(json_file)
 
+with open('servers.json') as json_file:
+    servers = json.load(json_file)
+
 engine = SnmpEngine()
 community = CommunityData(snmp_password)
 transport = UdpTransportTarget((snmp_ip, 161))
@@ -33,9 +33,12 @@ context = ContextData()
 
 rebooted_devices = {}
 
-def check_device():
-    logging.info("checking devices...")
-    status = requests.get(madmin + '/get_status', auth=(user, password))
+def check_device(madmin):
+    logging.info(f"checking devices of instance {madmin}...")
+    url = servers[madmin]["url"]
+    user = servers[madmin]["user"]
+    password = servers[madmin]["pass"]
+    status = requests.get(url + '/get_status', auth=(user, password))
     status = status.json()
     for device in status:
         if device["lastProtoDateTime"] and device["mode"] != "Idle":
@@ -107,5 +110,6 @@ def discord_message(name):
         logging.info(e.response.text)
 
 while True:
-    check_device()
+    for madmin in servers:
+        check_device(madmin)
     time.sleep(60)

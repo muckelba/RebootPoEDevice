@@ -1,7 +1,4 @@
 [main]
-madmin=https://madmin.com
-user=user
-password=pass
 rebootafter=5
 rebootcooldown=10
 discordwebhook=https://discord.com/api/webhooks/xxxx
