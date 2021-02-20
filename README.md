@@ -4,6 +4,8 @@ A little script to automatically power cycle devices connected to a PoE switch.
 
 ## Installation
 
+**IMPORTANT:** if you use multiple MADmin instances, make sure to have unique origins across them as the origin has to be unique in the devices.json!
+
 ### Config
 `cp config.ini.example config.ini`
 Fill in the config fields.
