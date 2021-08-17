@@ -45,7 +45,8 @@ def check_device(madmin):
         status.raise_for_status()
     except requests.exceptions.HTTPError as e:
         status = {}
-        logging.info(e.response.text)
+        logging.info(f"MADmin is not reachable! Error: {e.response.text}")
+        return
     
     for device in status.json():
         if device["lastProtoDateTime"] and device["mode"] != "Idle":
