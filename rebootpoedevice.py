@@ -14,17 +14,18 @@ logging.basicConfig(
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-madmin = config['main']['madmin']
-user = config['main']['user']
-password = config['main']['password']
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
+ptc_check = config.getboolean('main', 'ptc')
 snmp_ip = config['snmp']['ip']
 snmp_password = config['snmp']['password']
 
 with open('devices.json') as json_file:
     devices = json.load(json_file)
+
+with open('servers.json') as json_file:
+    servers = json.load(json_file)
 
 engine = SnmpEngine()
 community = CommunityData(snmp_password)
@@ -33,11 +34,21 @@ context = ContextData()
 
 rebooted_devices = {}
 
-def check_device():
-    logging.info("checking devices...")
-    status = requests.get(madmin + '/get_status', auth=(user, password))
-    status = status.json()
-    for device in status:
+def check_device(madmin):
+    logging.info(f"checking devices of instance {madmin}...")
+    url = servers[madmin]["url"]
+    user = servers[madmin]["user"]
+    password = servers[madmin]["pass"]
+
+    try:
+        status = requests.get(url + '/get_status', auth=(user, password))
+        status.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        status = {}
+        logging.info(f"MADmin is not reachable! Error: {e.response.text}")
+        return
+    
+    for device in status.json():
         if device["lastProtoDateTime"] and device["mode"] != "Idle":
             now = int(datetime.now().timestamp())
             lastData = device["lastProtoDateTime"]
@@ -107,5 +118,15 @@ def discord_message(name):
         logging.info(e.response.text)
 
 while True:
-    check_device()
+    if ptc_check:
+        logging.info("Checking PTC Login Servers first...")
+        result = requests.head('https://sso.pokemon.com/sso/login')
+        if result.status_code != 200:
+            logging.info("IP is banned by PTC, waiting 5 minutes and trying again")
+            time.sleep(300)
+            break
+        else:
+            logging.info("IP is not banned by PTC, continuing...")
+    for madmin in servers:
+        check_device(madmin)
     time.sleep(60)
