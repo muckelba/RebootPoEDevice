@@ -17,6 +17,7 @@ config.read('config.ini')
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
+ptc_check = config.getboolean('main', 'ptc')
 snmp_ip = config['snmp']['ip']
 snmp_password = config['snmp']['password']
 
@@ -38,9 +39,15 @@ def check_device(madmin):
     url = servers[madmin]["url"]
     user = servers[madmin]["user"]
     password = servers[madmin]["pass"]
-    status = requests.get(url + '/get_status', auth=(user, password))
-    status = status.json()
-    for device in status:
+
+    try:
+        status = requests.get(url + '/get_status', auth=(user, password))
+        status.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        status = {}
+        logging.info(e.response.text)
+    
+    for device in status.json():
         if device["lastProtoDateTime"] and device["mode"] != "Idle":
             now = int(datetime.now().timestamp())
             lastData = device["lastProtoDateTime"]
@@ -110,6 +117,15 @@ def discord_message(name):
         logging.info(e.response.text)
 
 while True:
+    if ptc_check:
+        logging.info("Checking PTC Login Servers first...")
+        result = requests.head('https://sso.pokemon.com/sso/login')
+        if result.status_code != 200:
+            logging.info("IP is banned by PTC, waiting 5 minutes and trying again")
+            time.sleep(300)
+            break
+        else:
+            logging.info("IP is not banned by PTC, continuing...")
     for madmin in servers:
         check_device(madmin)
     time.sleep(60)

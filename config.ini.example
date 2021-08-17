@@ -2,6 +2,7 @@
 rebootafter=5
 rebootcooldown=10
 discordwebhook=https://discord.com/api/webhooks/xxxx
+ptc=
 
 [snmp]
 ip=192.168.0.0
