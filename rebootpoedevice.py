@@ -138,11 +138,18 @@ def discord_message(name):
 while True:
     if ptc_check:
         logging.info("Checking PTC Login Servers first...")
-        result = requests.head('https://sso.pokemon.com/sso/login')
+        try:
+            result = requests.head('https://sso.pokemon.com/sso/login')
+            result.raise_for_status()
+        except requests.exceptions.RequestException as err:
+            logging.info(f"PTC Servers are not reachable! Error: {err}")
+            logging.info("Waiting 5 minutes and trying again")
+            time.sleep(300)
+            continue
         if result.status_code != 200:
             logging.info("IP is banned by PTC, waiting 5 minutes and trying again")
             time.sleep(300)
-            break
+            continue
         else:
             logging.info("IP is not banned by PTC, continuing...")
     for madmin in servers:
