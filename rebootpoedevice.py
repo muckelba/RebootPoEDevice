@@ -38,6 +38,7 @@ for device in devices:
     devices_data[device] = {}
     devices_data[device]["reboot_count"] = 0
     devices_data[device]["last_reboot"] = datetime.fromtimestamp(0)
+    devices_data[device]["webhook_id"] = ""
 
 
 def check_device(madmin):
@@ -74,8 +75,11 @@ def check_device(madmin):
             reboot = int(rebootafter) * 60
             calc = now - reboot - int(sleepTime)
             if int(lastData) > calc:
+                if devices_data[device["name"]]["webhook_id"] != "":
+                    status = discord_message(device["name"], edit=True)
+                if devices_data[device["name"]]["reboot_count"] != 0:
+                    logging.info(f'{device["name"]} is back online!')
                 devices_data[device["name"]]["reboot_count"] = 0
-                continue
             else:
                 logging.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
@@ -109,7 +113,7 @@ def reboot_device(name):
     else:
         logging.info(f"{name} is not in devices.json, skipping...")
 
-def discord_message(name):
+def discord_message(name, edit=False):
     now = datetime.utcnow()
     data = {
         "username": "Alert!",
@@ -127,13 +131,26 @@ def discord_message(name):
             }
         ]
     }
-    data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: {devices_data[name]['reboot_count']}"
     data["embeds"][0]["timestamp"] = str(now)
-    try:
-        result = requests.post(discordwebhook, json = data)
-        result.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        logging.info(e.response.text)
+
+    if not edit:
+        data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`"
+        try:
+            result = requests.post(discordwebhook, json = data, params={"wait": True})
+            result.raise_for_status()
+            answer = result.json()
+            devices_data[name]["webhook_id"] = answer["id"]
+        except requests.exceptions.RequestException as err:
+            logging.info(err)
+    else:
+        data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`\nFixed :white_check_mark:"
+        try:
+            result = requests.patch(discordwebhook + "/messages/" + devices_data[name]["webhook_id"], json = data)
+            result.raise_for_status()
+        except requests.exceptions.RequestException as err:
+            logging.info(err)
+    return result.status_code
+    
 
 while True:
     if ptc_check:
