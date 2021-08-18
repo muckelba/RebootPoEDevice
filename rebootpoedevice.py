@@ -75,11 +75,10 @@ def check_device(madmin):
             reboot = int(rebootafter) * 60
             calc = now - reboot - int(sleepTime)
             if int(lastData) > calc:
-                if devices_data[device["name"]]["webhook_id"] != "":
-                    status = discord_message(device["name"], edit=True)
                 if devices_data[device["name"]]["reboot_count"] != 0:
+                    discord_message(device["name"], edit=True)
                     logging.info(f'{device["name"]} is back online!')
-                devices_data[device["name"]]["reboot_count"] = 0
+                    devices_data[device["name"]]["reboot_count"] = 0
             else:
                 logging.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
