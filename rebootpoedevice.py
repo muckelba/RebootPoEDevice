@@ -32,7 +32,13 @@ community = CommunityData(snmp_password)
 transport = UdpTransportTarget((snmp_ip, 161))
 context = ContextData()
 
-rebooted_devices = {}
+# load every device into memory with default values
+devices_data = {}
+for device in devices:
+    devices_data[device] = {}
+    devices_data[device]["reboot_count"] = 0
+    devices_data[device]["last_reboot"] = datetime.fromtimestamp(0)
+
 
 def check_device(madmin):
     logging.info(f"checking devices of instance {madmin}...")
@@ -56,13 +62,14 @@ def check_device(madmin):
             reboot = int(rebootafter) * 60
             calc = now - reboot - int(sleepTime)
             if int(lastData) > calc:
+                devices_data[device["name"]]["reboot_count"] = 0
                 continue
             else:
                 logging.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
         elif device["mode"] != "Idle":
             logging.info(f'{device["name"]} is not online!')
-            reboot_device(device["name"])
+            reboot_device(device["name"])           
     logging.info("done checking devices...")
 
 def snmp_command(name, value):
@@ -73,14 +80,13 @@ def snmp_command(name, value):
 
 def reboot_device(name):
     if name in devices:
-        if name in rebooted_devices:
-            if rebooted_devices[name] > int(datetime.now().timestamp()) - (int(rebootcooldown) * 60):
-                logging.info(f"{name} was rebooted in the recent past, skipping for now...")
-                return
-            else:
-                rebooted_devices[name] = int(datetime.now().timestamp())
+        rebootdelta = timedelta(minutes=int(rebootcooldown))
+        if devices_data[name]["last_reboot"] > (datetime.now() - rebootdelta):
+            logging.info(f"{name} was rebooted in the recent past, skipping for now...")
+            return
         else:
-            rebooted_devices[name] = int(datetime.now().timestamp())
+            devices_data[name]["reboot_count"] += 1
+            devices_data[name]["last_reboot"] = datetime.now()
         logging.info(f"shutting down {name}...")
         snmp_command(name, 2)
         time.sleep(1)
@@ -109,7 +115,7 @@ def discord_message(name):
             }
         ]
     }
-    data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!"
+    data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: {devices_data[name]['reboot_count']}"
     data["embeds"][0]["timestamp"] = str(now)
     try:
         result = requests.post(discordwebhook, json = data)
