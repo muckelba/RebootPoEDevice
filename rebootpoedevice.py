@@ -68,7 +68,7 @@ def check_device(madmin):
         return
 
     for device in status.json():
-        if device["lastProtoDateTime"] and device["mode"] != "Idle":
+        if device["name"] in devices and device["lastProtoDateTime"] and device["mode"] != "Idle":
             now = int(datetime.now().timestamp())
             lastData = device["lastProtoDateTime"]
             sleepTime = device["currentSleepTime"]
@@ -82,7 +82,7 @@ def check_device(madmin):
             else:
                 logging.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
-        elif device["mode"] != "Idle":
+        elif device["name"] in devices and device["mode"] != "Idle":
             logging.info(f'{device["name"]} is not online!')
             reboot_device(device["name"])           
     logging.info("done checking devices...")
@@ -94,23 +94,20 @@ def snmp_command(name, value):
     next(g)
 
 def reboot_device(name):
-    if name in devices:
-        rebootdelta = timedelta(minutes=int(rebootcooldown))
-        if devices_data[name]["last_reboot"] > (datetime.now() - rebootdelta):
-            logging.info(f"{name} was rebooted in the recent past, skipping for now...")
-            return
-        else:
-            devices_data[name]["reboot_count"] += 1
-            devices_data[name]["last_reboot"] = datetime.now()
-        logging.info(f"shutting down {name}...")
-        snmp_command(name, 2)
-        time.sleep(1)
-        logging.info(f"booting up {name}...")
-        snmp_command(name, 1)
-        if discordwebhook:
-            discord_message(name)
+    rebootdelta = timedelta(minutes=int(rebootcooldown))
+    if devices_data[name]["last_reboot"] > (datetime.now() - rebootdelta):
+        logging.info(f"{name} was rebooted in the recent past, skipping for now...")
+        return
     else:
-        logging.info(f"{name} is not in devices.json, skipping...")
+        devices_data[name]["reboot_count"] += 1
+        devices_data[name]["last_reboot"] = datetime.now()
+    logging.info(f"shutting down {name}...")
+    snmp_command(name, 2)
+    time.sleep(1)
+    logging.info(f"booting up {name}...")
+    snmp_command(name, 1)
+    if discordwebhook:
+        discord_message(name)
 
 def discord_message(name, edit=False):
     now = datetime.utcnow()
