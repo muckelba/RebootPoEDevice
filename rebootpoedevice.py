@@ -5,21 +5,30 @@ from datetime import datetime, timedelta
 from pysnmp.hlapi import *
 import time
 import logging
-
-logging.basicConfig(
-    format='[%(asctime)s] %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+import sys
 
 config = configparser.ConfigParser()
 config.read('config.ini')
-
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
 ptc_check = config.getboolean('main', 'ptc')
+stdout = config.getboolean('main', 'stdout')
 snmp_ip = config['snmp']['ip']
 snmp_password = config['snmp']['password']
+
+logger = logging.getLogger('RebootPoEDevice')
+logger.setLevel(logging.INFO)
+
+if stdout:
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter('%(message)s'))
+else:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s', '%Y-%m-%d %H:%M:%S'))
+
+logger.addHandler(handler)
+
 
 with open('devices.json') as json_file:
     devices = json.load(json_file)
@@ -42,7 +51,7 @@ for device in devices:
 
 
 def check_device(madmin):
-    logging.info(f"checking devices of instance {madmin}...")
+    logger.info(f"checking devices of instance {madmin}...")
     url = servers[madmin]["url"]
     user = servers[madmin]["user"]
     password = servers[madmin]["pass"]
@@ -52,19 +61,19 @@ def check_device(madmin):
         status.raise_for_status()
     except requests.exceptions.HTTPError as errh:
         status = {}
-        logging.info(f"MADmin is not reachable! Http Error: {errh}")
+        logger.info(f"MADmin is not reachable! Http Error: {errh}")
         return
     except requests.exceptions.ConnectionError as errc:
         status = {}
-        logging.info(f"MADmin is not reachable! Error Connecting: {errc}")
+        logger.info(f"MADmin is not reachable! Error Connecting: {errc}")
         return
     except requests.exceptions.Timeout as errt:
         status = {}
-        logging.info(f"MADmin is not reachable! Timeout Error: {errt}")
+        logger.info(f"MADmin is not reachable! Timeout Error: {errt}")
         return
     except requests.exceptions.RequestException as err:
         status = {}
-        logging.info(f"MADmin is not reachable! Something Else: {err}")
+        logger.info(f"MADmin is not reachable! Something Else: {err}")
         return
 
     for device in status.json():
@@ -77,15 +86,15 @@ def check_device(madmin):
             if int(lastData) > calc:
                 if devices_data[device["name"]]["reboot_count"] != 0:
                     discord_message(device["name"], edit=True)
-                    logging.info(f'{device["name"]} is back online!')
+                    logger.info(f'{device["name"]} is back online!')
                     devices_data[device["name"]]["reboot_count"] = 0
             else:
-                logging.info(f'{device["name"]} is not online!')
+                logger.info(f'{device["name"]} is not online!')
                 reboot_device(device["name"])
         elif device["name"] in devices and device["mode"] != "Idle":
-            logging.info(f'{device["name"]} is not online!')
+            logger.info(f'{device["name"]} is not online!')
             reboot_device(device["name"])           
-    logging.info("done checking devices...")
+    logger.info("done checking devices...")
 
 def snmp_command(name, value):
     oid = str('1.3.6.1.2.1.105.1.1.1.3.1.') + str(devices[name])
@@ -96,16 +105,16 @@ def snmp_command(name, value):
 def reboot_device(name):
     rebootdelta = timedelta(minutes=int(rebootcooldown))
     if devices_data[name]["last_reboot"] > (datetime.now() - rebootdelta):
-        logging.info(f"{name} was rebooted in the recent past, skipping for now...")
+        logger.info(f"{name} was rebooted in the recent past, skipping for now...")
         return
     else:
         devices_data[name]["reboot_count"] += 1
         devices_data[name]["last_reboot"] = datetime.now()
-    logging.info(f"shutting down {name}...")
-    snmp_command(name, 2)
+    logger.info(f"shutting down {name}...")
+    #snmp_command(name, 2)
     time.sleep(1)
-    logging.info(f"booting up {name}...")
-    snmp_command(name, 1)
+    logger.info(f"booting up {name}...")
+    #snmp_command(name, 1)
     if discordwebhook:
         discord_message(name)
 
@@ -137,34 +146,34 @@ def discord_message(name, edit=False):
             answer = result.json()
             devices_data[name]["webhook_id"] = answer["id"]
         except requests.exceptions.RequestException as err:
-            logging.info(err)
+            logger.info(err)
     else:
         data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`\nFixed :white_check_mark:"
         try:
             result = requests.patch(discordwebhook + "/messages/" + devices_data[name]["webhook_id"], json = data)
             result.raise_for_status()
         except requests.exceptions.RequestException as err:
-            logging.info(err)
+            logger.info(err)
     return result.status_code
     
 
 while True:
     if ptc_check:
-        logging.info("Checking PTC Login Servers first...")
+        logger.info("Checking PTC Login Servers first...")
         try:
             result = requests.head('https://sso.pokemon.com/sso/login')
             result.raise_for_status()
         except requests.exceptions.RequestException as err:
-            logging.info(f"PTC Servers are not reachable! Error: {err}")
-            logging.info("Waiting 5 minutes and trying again")
+            logger.info(f"PTC Servers are not reachable! Error: {err}")
+            logger.info("Waiting 5 minutes and trying again")
             time.sleep(300)
             continue
         if result.status_code != 200:
-            logging.info("IP is banned by PTC, waiting 5 minutes and trying again")
+            logger.info("IP is banned by PTC, waiting 5 minutes and trying again")
             time.sleep(300)
             continue
         else:
-            logging.info("IP is not banned by PTC, continuing...")
+            logger.info("IP is not banned by PTC, continuing...")
     for madmin in servers:
         check_device(madmin)
     time.sleep(60)

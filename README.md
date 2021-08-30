@@ -13,7 +13,8 @@ Fill in the config fields.
 - `rebootafter` specifies the time in minutes after a device without data should be power cycled.
 - `rebootcooldown` specifies a time in minutes after a powercycled device should be ignored by the script.
 - `discordwebhook` fill in a webhook url. A little discord message is sent everytime a device getting rebooted.
-- `ptc` will check if the public IP adress is banned by PTC at the moment and will not try to reboot devices if set to `true` 
+- `ptc` will check if the public IP adress is banned by PTC at the moment and will not try to reboot devices if set to `true`.
+- `stdout` will send the output to standard out and without a timestamp if set to `true`. Set it to false if you don't know what that means.
 - `ip` is the ip of your PoE switch.
 - `password` is the password of your PoE switch.
 
