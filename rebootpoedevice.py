@@ -111,10 +111,10 @@ def reboot_device(name):
         devices_data[name]["reboot_count"] += 1
         devices_data[name]["last_reboot"] = datetime.now()
     logger.info(f"shutting down {name}...")
-    #snmp_command(name, 2)
+    snmp_command(name, 2)
     time.sleep(1)
     logger.info(f"booting up {name}...")
-    #snmp_command(name, 1)
+    snmp_command(name, 1)
     if discordwebhook:
         discord_message(name)
 
