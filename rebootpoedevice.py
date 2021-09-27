@@ -12,10 +12,13 @@ config.read('config.ini')
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
+banPing = config['main']['banPing']
 ptc_check = config.getboolean('main', 'ptc')
 stdout = config.getboolean('main', 'stdout')
 snmp_ip = config['snmp']['ip']
 snmp_password = config['snmp']['password']
+
+banned = False
 
 logger = logging.getLogger('RebootPoEDevice')
 logger.setLevel(logging.INFO)
@@ -28,7 +31,6 @@ else:
     handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s', '%Y-%m-%d %H:%M:%S'))
 
 logger.addHandler(handler)
-
 
 with open('devices.json') as json_file:
     devices = json.load(json_file)
@@ -119,7 +121,6 @@ def reboot_device(name):
         discord_message(name)
 
 def discord_message(name, edit=False):
-    now = datetime.utcnow()
     data = {
         "username": "Alert!",
         "avatar_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OOjs_UI_icon_alert-destructive.svg/500px-OOjs_UI_icon_alert-destructive.svg.png",
@@ -132,23 +133,34 @@ def discord_message(name, edit=False):
             },
             "thumbnail": {
                 "url": "https://img.icons8.com/plasticine/344/restart.png"
-            }
+            },
+            "timestamp": str(datetime.utcnow())
             }
         ]
     }
-    data["embeds"][0]["timestamp"] = str(now)
 
     if not edit:
         data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`"
         try:
-            result = requests.post(discordwebhook, json = data, params={"wait": True})
-            result.raise_for_status()
-            answer = result.json()
-            devices_data[name]["webhook_id"] = answer["id"]
+            if devices_data[name]["webhook_id"] == "":
+                result = requests.post(discordwebhook, json = data, params={"wait": True})
+                result.raise_for_status()
+                answer = result.json()
+                devices_data[name]["webhook_id"] = answer["id"]
+            else:
+                # Delete the previous message and trigger a new one
+                result = requests.delete(discordwebhook + "/messages/" + devices_data[name]["webhook_id"])
+                result.raise_for_status()
+
+                result = requests.post(discordwebhook, json = data, params={"wait": True})
+                result.raise_for_status()
+                answer = result.json()
+                devices_data[name]["webhook_id"] = answer["id"]
         except requests.exceptions.RequestException as err:
             logger.info(err)
     else:
         data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`\nFixed :white_check_mark:"
+        data["embeds"][0]["color"] = 7844437
         try:
             result = requests.patch(discordwebhook + "/messages/" + devices_data[name]["webhook_id"], json = data)
             result.raise_for_status()
@@ -170,10 +182,25 @@ while True:
             continue
         if result.status_code != 200:
             logger.info("IP is banned by PTC, waiting 5 minutes and trying again")
+            # Only send a message once per ban and only when a webhook is set
+            if not banned and discordwebhook:
+                unbantime = datetime.now() + timedelta(hours=3)
+                data = {
+                    "username": "Alert!",
+                    "avatar_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/OOjs_UI_icon_alert-destructive.svg/500px-OOjs_UI_icon_alert-destructive.svg.png",
+                    "content": f"<@{banPing}> IP address is currently banned by PTC! Approximate remaining time until unban: <t:{int(unbantime.timestamp())}:R> ({unbantime.strftime('%H:%M')})",
+                }
+                try:
+                    result = requests.post(discordwebhook, json=data)
+                    result.raise_for_status()
+                except requests.exceptions.RequestException as err:
+                    logger.info(err)
+            banned = True
             time.sleep(300)
             continue
         else:
             logger.info("IP is not banned by PTC, continuing...")
+            banned = False
     for madmin in servers:
         check_device(madmin)
     time.sleep(60)

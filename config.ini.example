@@ -2,8 +2,9 @@
 rebootafter=5
 rebootcooldown=10
 discordwebhook=https://discord.com/api/webhooks/xxxx
-ptc=
-stdout=
+ptc=False
+banPing=000000000000000000
+stdout=False
 
 [snmp]
 ip=192.168.0.0
