@@ -2,3 +2,4 @@ devices.json
 servers.json
 config.ini
 .vscode/*
+docker-compose.yml
