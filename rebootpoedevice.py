@@ -141,23 +141,33 @@ def discord_message(name, edit=False):
 
     if not edit:
         data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`"
-        try:
-            if devices_data[name]["webhook_id"] == "":
+        if devices_data[name]["webhook_id"] == "":
+            try:
                 result = requests.post(discordwebhook, json = data, params={"wait": True})
                 result.raise_for_status()
-                answer = result.json()
-                devices_data[name]["webhook_id"] = answer["id"]
-            else:
-                # Delete the previous message and trigger a new one
+            except requests.exceptions.RequestException as err:
+                logger.info(err)
+                return result.status_code
+            answer = result.json()
+            devices_data[name]["webhook_id"] = answer["id"]
+        else:
+            # Delete the previous message 
+            try:
                 result = requests.delete(discordwebhook + "/messages/" + devices_data[name]["webhook_id"])
                 result.raise_for_status()
-
+            except requests.exceptions.RequestException as err:
+                logger.info(err)
+                return result.status_code
+            
+            # Send a new one
+            try:
                 result = requests.post(discordwebhook, json = data, params={"wait": True})
                 result.raise_for_status()
-                answer = result.json()
-                devices_data[name]["webhook_id"] = answer["id"]
-        except requests.exceptions.RequestException as err:
-            logger.info(err)
+            except requests.exceptions.RequestException as err:
+                logger.info(err)
+                return result.status_code
+            answer = result.json()
+            devices_data[name]["webhook_id"] = answer["id"]
     else:
         data["embeds"][0]["description"] = f"`{name}` did not send useful data for more than {rebootafter} minutes!\nReboot count: `{devices_data[name]['reboot_count']}`\nFixed :white_check_mark:"
         data["embeds"][0]["color"] = 7844437
