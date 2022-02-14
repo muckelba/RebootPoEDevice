@@ -62,23 +62,25 @@ def check_device(madmin):
         status = requests.get(url + '/get_status', auth=(user, password))
         status.raise_for_status()
     except requests.exceptions.HTTPError as errh:
-        status = {}
         logger.info(f"MADmin is not reachable! Http Error: {errh}")
         return
     except requests.exceptions.ConnectionError as errc:
-        status = {}
         logger.info(f"MADmin is not reachable! Error Connecting: {errc}")
         return
     except requests.exceptions.Timeout as errt:
-        status = {}
         logger.info(f"MADmin is not reachable! Timeout Error: {errt}")
         return
     except requests.exceptions.RequestException as err:
-        status = {}
         logger.info(f"MADmin is not reachable! Something Else: {err}")
         return
 
-    for device in status.json():
+    try:
+        status_json = status.json()
+    except requests.exceptions.JSONDecodeError as err:
+        logger.info(f"MADmin response is not a valid JSON: {err}")
+        return
+
+    for device in status_json:
         if device["name"] in devices and device["lastProtoDateTime"] and device["mode"] != "Idle":
             now = int(datetime.now().timestamp())
             lastData = device["lastProtoDateTime"]
