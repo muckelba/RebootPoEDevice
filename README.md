@@ -37,7 +37,7 @@ Copy the example servers file: `cp config/servers.json.example config/servers.js
 
 ## Docker
 
-It's also possible to use Docker to host this script. The image is hosted on GitHub: `ghcr.io/muckelba/RebootPoEDevice:master`
+It's also possible to use Docker to host this script. The image is hosted on GitHub: `ghcr.io/muckelba/rebootpoedevice:master`
 
 ### Docker Compose
 
