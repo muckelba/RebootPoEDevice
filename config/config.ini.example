@@ -1,6 +1,6 @@
 [main]
-rebootafter=5
-rebootcooldown=10
+rebootafter=10
+rebootcooldown=15
 discordwebhook=https://discord.com/api/webhooks/xxxx
 ptc=False
 banPing=000000000000000000

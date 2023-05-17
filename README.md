@@ -7,8 +7,8 @@ A little script to automatically power cycle devices connected to a PoE switch.
 **IMPORTANT:** if you use multiple MADmin instances, make sure to have unique origins across them as the origin has to be unique in the devices.json!
 
 ### Config
-`cp config.ini.example config.ini`
-Fill in the config fields.
+
+Copy the example config file: `cp config/config.ini.example config/config.ini` and fill in the config fields:
 
 - `rebootafter` specifies the time in minutes after a device without data should be power cycled.
 - `rebootcooldown` specifies a time in minutes after a powercycled device should be ignored by the script.
@@ -20,15 +20,31 @@ Fill in the config fields.
 - `password` is the password of your PoE switch.
 
 ### Python requirements
+
 `pip install -r requirements.txt`
 
 ### Devices
-`cp devices.json.example devices.json`
-The key is the origin, the value is the PoE portnumber.
+
+Copy the example devices file: `cp config/devices.json.example config/devices.json` and fill in your devices and their portnumbers. The key is the origin, the value is the PoE portnumber.
 
 ### Servers
-`cp servers.json.example servers.json`
-Fill in your MADmin server(s). Set `user` and `pass` to `""` or `null` if you dont use any auth.
+
+Copy the example servers file: `cp config/servers.json.example config/servers.json` and fill in your MADmin server(s). Set `user` and `pass` to `""` or `null` if you dont use any auth.
 
 ## Running
+
 `python rebootpoedevice.py`
+
+## Docker
+
+It's also possible to use Docker to host this script. The image is hosted on GitHub: `ghcr.io/muckelba/RebootPoEDevice:master`
+
+### Docker Compose
+
+Copy the example compose file: `cp docker-compose.yml.example docker-compose.yml` and make adjustments if you need to.
+
+Start the script with `docker-compose up -d` and see its logs with `docker-compose logs -f`. 
+
+To stop it again, run `docker-compose down`. 
+
+To update the container, run `docker-compose pull` and restart the container.

@@ -8,7 +8,7 @@ import logging
 import sys
 
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read('config/config.ini')
 rebootafter = config['main']['rebootafter']
 rebootcooldown = config['main']['rebootcooldown']
 discordwebhook = config['main']['discordwebhook']
@@ -32,10 +32,10 @@ else:
 
 logger.addHandler(handler)
 
-with open('devices.json') as json_file:
+with open('config/devices.json') as json_file:
     devices = json.load(json_file)
 
-with open('servers.json') as json_file:
+with open('config/servers.json') as json_file:
     servers = json.load(json_file)
 
 engine = SnmpEngine()
